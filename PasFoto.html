@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passport Photo Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+		        h2 {
+            text-align: center;
+            color: #333;
+        }
+        .photo-sections {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .photo-section {
+            width: 48%;
+            margin-bottom: 20px;
+        }
+        .image-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            overflow: hidden;
+            display: none;
+        }
+        .uploaded-image {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        .crop-box {
+            position: absolute;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 9999em rgba(0, 0, 0, 0.5);
+            cursor: move;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #fff;
+            border: 1px solid #333;
+        }
+        .resize-handle.nw {
+            top: -5px;
+            left: -5px;
+            cursor: nw-resize;
+        }
+        .resize-handle.ne {
+            top: -5px;
+            right: -5px;
+            cursor: ne-resize;
+        }
+        .resize-handle.sw {
+            bottom: -5px;
+            left: -5px;
+            cursor: sw-resize;
+        }
+        .resize-handle.se {
+            bottom: -5px;
+            right: -5px;
+            cursor: se-resize;
+        }
+.result-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    margin-top: 20px;
+}
+        .result-image {
+            max-width: 100%;
+            border: 1px solid #ccc;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        label.file-upload {
+            display: block;
+            width: 200px;
+            margin: 0 auto;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+        }
+        label.file-upload:hover {
+            background-color: #2980b9;
+        }
+        @media (max-width: 768px) {
+            .photo-section {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Passport Photo Generator</h1>
+        <div class="photo-sections">
+            <div class="photo-section">
+                <h2>4x6 Photo</h2>
+                <label for="imageInput4x6" class="file-upload">Choose 4x6 Image</label>
+                <input type="file" id="imageInput4x6" accept="image/*">
+                <div id="imageContainer4x6" class="image-container">
+                    <img id="uploadedImage4x6" class="uploaded-image" alt="Uploaded 4x6 Image">
+                    <div id="cropBox4x6" class="crop-box">
+                        <div class="resize-handle nw"></div>
+                        <div class="resize-handle ne"></div>
+                        <div class="resize-handle sw"></div>
+                        <div class="resize-handle se"></div>
+                    </div>
+                </div>
+                <button id="generateBtn4x6" style="display: none;">Generate 4x6 Passport Photo</button>
+                <div id="result4x6" class="result-container"></div>
+            </div>
+            <div class="photo-section">
+                <h2>3x4 Photo</h2>
+                <label for="imageInput3x4" class="file-upload">Choose 3x4 Image</label>
+                <input type="file" id="imageInput3x4" accept="image/*">
+                <div id="imageContainer3x4" class="image-container">
+                    <img id="uploadedImage3x4" class="uploaded-image" alt="Uploaded 3x4 Image">
+                    <div id="cropBox3x4" class="crop-box">
+                        <div class="resize-handle nw"></div>
+                        <div class="resize-handle ne"></div>
+                        <div class="resize-handle sw"></div>
+                        <div class="resize-handle se"></div>
+                    </div>
+                </div>
+                <button id="generateBtn3x4" style="display: none;">Generate 3x4 Passport Photo</button>
+                <div id="result3x4" class="result-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setupPhotoSection(sectionId) {
+            const imageInput = document.getElementById(`imageInput${sectionId}`);
+            const imageContainer = document.getElementById(`imageContainer${sectionId}`);
+            const uploadedImage = document.getElementById(`uploadedImage${sectionId}`);
+            const cropBox = document.getElementById(`cropBox${sectionId}`);
+            const generateBtn = document.getElementById(`generateBtn${sectionId}`);
+            const result = document.getElementById(`result${sectionId}`);
+            const resizeHandles = cropBox.querySelectorAll('.resize-handle');
+
+            let isDragging = false;
+            let isResizing = false;
+            let startX, startY, startWidth, startHeight, startLeft, startTop;
+            let currentHandle;
+
+            imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        uploadedImage.src = event.target.result;
+                        uploadedImage.onload = () => initializeCropBox(sectionId);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            function initializeCropBox(sectionId) {
+                imageContainer.style.display = 'block';
+                const imageWidth = uploadedImage.offsetWidth;
+                const imageHeight = uploadedImage.offsetHeight;
+
+                const aspectRatio = sectionId === '3x4' ? 354/472 : 472/709;
+                let cropBoxWidth, cropBoxHeight;
+                if (imageWidth / imageHeight > aspectRatio) {
+                    cropBoxHeight = imageHeight * 0.8;
+                    cropBoxWidth = cropBoxHeight * aspectRatio;
+                } else {
+                    cropBoxWidth = imageWidth * 0.8;
+                    cropBoxHeight = cropBoxWidth / aspectRatio;
+                }
+
+                cropBox.style.width = cropBoxWidth + 'px';
+                cropBox.style.height = cropBoxHeight + 'px';
+                cropBox.style.left = (imageWidth - cropBoxWidth) / 2 + 'px';
+                cropBox.style.top = (imageHeight - cropBoxHeight) / 2 + 'px';
+
+                generateBtn.style.display = 'block';
+            }
+
+            cropBox.addEventListener('mousedown', startDragging);
+            cropBox.addEventListener('touchstart', startDragging);
+
+            resizeHandles.forEach(handle => {
+                handle.addEventListener('mousedown', startResizing);
+                handle.addEventListener('touchstart', startResizing);
+            });
+
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('touchmove', handleTouchMove);
+
+            document.addEventListener('mouseup', stopDraggingAndResizing);
+            document.addEventListener('touchend', stopDraggingAndResizing);
+
+            function startDragging(e) {
+                if (e.target.classList.contains('resize-handle')) return;
+                isDragging = true;
+                startX = e.clientX || e.touches[0].clientX;
+                startY = e.clientY || e.touches[0].clientY;
+                startLeft = cropBox.offsetLeft;
+                startTop = cropBox.offsetTop;
+                e.preventDefault();
+            }
+
+            function startResizing(e) {
+                isResizing = true;
+                currentHandle = e.target;
+                startX = e.clientX || e.touches[0].clientX;
+                startY = e.clientY || e.touches[0].clientY;
+                startWidth = cropBox.offsetWidth;
+                startHeight = cropBox.offsetHeight;
+                startLeft = cropBox.offsetLeft;
+                startTop = cropBox.offsetTop;
+                e.stopPropagation();
+                e.preventDefault();
+            }
+
+            function handleMouseMove(e) {
+                if (isDragging) {
+                    drag(e.clientX, e.clientY);
+                } else if (isResizing) {
+                    resize(e.clientX, e.clientY);
+                }
+            }
+
+            function handleTouchMove(e) {
+                if (isDragging) {
+                    drag(e.touches[0].clientX, e.touches[0].clientY);
+                } else if (isResizing) {
+                    resize(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }
+
+            function drag(clientX, clientY) {
+                const dx = clientX - startX;
+                const dy = clientY - startY;
+
+                let newLeft = startLeft + dx;
+                let newTop = startTop + dy;
+
+                const maxLeft = uploadedImage.offsetWidth - cropBox.offsetWidth;
+                const maxTop = uploadedImage.offsetHeight - cropBox.offsetHeight;
+
+                newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+                newTop = Math.max(0, Math.min(newTop, maxTop));
+
+                cropBox.style.left = newLeft + 'px';
+                cropBox.style.top = newTop + 'px';
+            }
+
+            function resize(clientX, clientY) {
+                const dx = clientX - startX;
+                const dy = clientY - startY;
+
+                let newWidth, newHeight, newLeft, newTop;
+                const aspectRatio = sectionId === '3x4' ? 354/472 : 472/709;
+
+                if (currentHandle.classList.contains('se')) {
+                    newWidth = startWidth + dx;
+                    newHeight = newWidth / aspectRatio;
+                } else if (currentHandle.classList.contains('sw')) {
+                    newWidth = startWidth - dx;
+                    newHeight = newWidth / aspectRatio;
+                    newLeft = startLeft + dx;
+                } else if (currentHandle.classList.contains('ne')) {
+                    newHeight = startHeight - dy;
+                    newWidth = newHeight * aspectRatio;
+                    newTop = startTop + dy;
+                } else if (currentHandle.classList.contains('nw')) {
+                    newHeight = startHeight - dy;
+                    newWidth = newHeight * aspectRatio;
+                    newLeft = startLeft + (startWidth - newWidth);
+                    newTop = startTop + dy;
+                }
+
+                const maxWidth = uploadedImage.offsetWidth - startLeft;
+                const maxHeight = uploadedImage.offsetHeight - startTop;
+
+                if (newWidth > 50 && newHeight > 50 && newWidth <= maxWidth && newHeight <= maxHeight) {
+                    cropBox.style.width = newWidth + 'px';
+                    cropBox.style.height = newHeight + 'px';
+                    
+                    if (newLeft !== undefined) cropBox.style.left = newLeft + 'px';
+                    if (newTop !== undefined) cropBox.style.top = newTop + 'px';
+                }
+            }
+
+            function stopDraggingAndResizing() {
+                isDragging = false;
+                isResizing = false;
+            }
+
+            generateBtn.addEventListener('click', () => generatePassportPhoto(sectionId));
+
+            function generatePassportPhoto(sectionId) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                const cropBoxRect = cropBox.getBoundingClientRect();
+                const imageRect = uploadedImage.getBoundingClientRect();
+
+                const scaleX = uploadedImage.naturalWidth / imageRect.width;
+                const scaleY = uploadedImage.naturalHeight / imageRect.height;
+
+                const cropX = (cropBoxRect.left - imageRect.left) * scaleX;
+                const cropY = (cropBoxRect.top - imageRect.top) * scaleY;
+                const cropWidth = cropBoxRect.width * scaleX;
+                const cropHeight = cropBoxRect.height * scaleY;
+
+                const width = sectionId === '3x4' ? 354 : 472;
+                const height = sectionId === '3x4' ? 472 : 709;
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(uploadedImage, cropX, cropY, cropWidth, cropHeight, 0, 0, width, height);
+                const photo = canvas.toDataURL('image/jpeg');
+
+                displayResult(photo, sectionId);
+            }
+
+            function displayResult(photo, sectionId) {
+                result.innerHTML = '';
+
+                const img = document.createElement('img');
+                img.src = photo;
+                img.alt = `${sectionId} Passport Photo`;
+                img.className = 'result-image';
+
+                const downloadBtn = document.createElement('button');
+                downloadBtn.textContent = `Download ${sectionId}`;
+                downloadBtn.onclick = () => downloadImage(photo, `${sectionId}_passport_photo.jpg`);
+
+                result.appendChild(img);
+                result.appendChild(downloadBtn);
+            }
+
+            function downloadImage(dataUrl, fileName) {
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = fileName;
+                link.click();
+            }
+        }
+
+        setupPhotoSection('3x4');
+        setupPhotoSection('4x6');
+    </script>
+</body>
+</html>
